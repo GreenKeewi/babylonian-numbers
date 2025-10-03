@@ -52,6 +52,12 @@ export default function CompletionScreen({ onPlayAgain }: CompletionScreenProps)
               ))}
             </ul>
           </div>
+          <div className="pt-4">
+            <h3 className="font-headline text-xl text-yellow-900/90 mb-2">The Royal Report</h3>
+            <p className="text-muted-foreground">
+              Awaiting you is a special report from the king. But first, you must prove your worthiness once more. Another scribe challenge awaits to unlock it.
+            </p>
+          </div>
         </CardContent>
         <CardFooter>
           <Button onClick={onPlayAgain} size="lg" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-bold text-lg">

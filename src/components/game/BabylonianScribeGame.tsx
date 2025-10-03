@@ -23,10 +23,14 @@ export default function BabylonianScribeGame() {
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [userInputSymbols, setUserInputSymbols] = useState<('1' | '10')[]>([]);
   const [showConfetti, setShowConfetti] = useState(false);
-  
+  const [dynamicProblem, setDynamicProblem] = useState<number | null>(null);
+
   const tabletBg = PlaceHolderImages.find(p => p.id === 'clay-tablet-background');
 
   const currentLevel = useMemo(() => levels[levelIndex], [levelIndex]);
+  const problem = dynamicProblem ?? currentLevel.problem;
+  const answer = dynamicProblem ?? currentLevel.answer;
+
   const userAnswerValue = useMemo(() => {
     return userInputSymbols.reduce((acc, symbol) => {
       return acc + (symbol === '1' ? 1 : 10);
@@ -42,13 +46,13 @@ export default function BabylonianScribeGame() {
   const handleClear = () => {
     setUserInputSymbols([]);
   };
-  
+
   const handleBackspace = () => {
     setUserInputSymbols(userInputSymbols.slice(0, -1));
   };
 
   const handleSubmit = () => {
-    if (userAnswerValue === currentLevel.answer) {
+    if (userAnswerValue === answer) {
       setFeedback('correct');
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 2000);
@@ -61,6 +65,7 @@ export default function BabylonianScribeGame() {
   const handleNext = () => {
     setFeedback(null);
     setUserInputSymbols([]);
+    setDynamicProblem(null);
     if (levelIndex < levels.length - 1) {
       setLevelIndex(levelIndex + 1);
       setGameState('playing');
@@ -73,6 +78,13 @@ export default function BabylonianScribeGame() {
     setFeedback(null);
     setGameState('playing');
     setUserInputSymbols([]);
+    const min = Math.max(1, currentLevel.problem - 5);
+    const max = currentLevel.problem + 5;
+    let newProblem;
+    do {
+      newProblem = Math.floor(Math.random() * (max - min + 1)) + min;
+    } while (newProblem === problem);
+    setDynamicProblem(newProblem);
   };
 
   const handlePlayAgain = () => {
@@ -80,6 +92,7 @@ export default function BabylonianScribeGame() {
     setGameState('playing');
     setFeedback(null);
     setUserInputSymbols([]);
+    setDynamicProblem(null);
   };
 
   if (gameState === 'finished') {
@@ -132,7 +145,7 @@ export default function BabylonianScribeGame() {
               </Popover>
             </div>
             <p className="text-muted-foreground">{currentLevel.task}</p>
-            <p className="text-5xl font-headline font-bold text-accent my-4">{currentLevel.problem}</p>
+            <p className="text-5xl font-headline font-bold text-accent my-4">{problem}</p>
           </div>
 
           <div className="min-h-[120px] bg-black/10 rounded-lg p-4 flex flex-col justify-center items-center border-2 border-dashed border-yellow-900/30">
@@ -150,7 +163,7 @@ export default function BabylonianScribeGame() {
               {feedback === 'correct' ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
               <AlertTitle className="font-bold">{feedback === 'correct' ? 'Correct!' : 'Not Quite!'}</AlertTitle>
               <AlertDescription>
-                {feedback === 'correct' ? 'Excellent work, scribe!' : `The correct value is ${currentLevel.answer}. Try to form that number.`}
+                {feedback === 'correct' ? 'Excellent work, scribe!' : `The correct value is ${answer}. Try to form that number.`}
               </AlertDescription>
             </Alert>
           )}
