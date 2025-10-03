@@ -1,3 +1,10 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "clay-tablet-background",
+      "description": "A background image resembling a cracked clay tablet.",
+      "imageUrl": "https://images.unsplash.com/photo-1753164726544-ecee0b862b03?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxjbGF5JTIwdGFibGV0fGVufDB8fHx8MTc1OTUyOTMzNnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "clay tablet"
+    }
+  ]
 }
