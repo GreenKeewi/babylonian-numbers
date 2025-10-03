@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
-import { levels, type Level } from '@/lib/levels';
+import { levels, type Level, finalChallengeLevel } from '@/lib/levels';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -11,6 +11,7 @@ import { HelpCircle, CheckCircle2, XCircle, Star } from 'lucide-react';
 import CuneiformOne from '@/components/icons/CuneiformOne';
 import CuneiformTen from '@/components/icons/CuneiformTen';
 import CompletionScreen from './CompletionScreen';
+import Report from './Report';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
@@ -23,18 +24,42 @@ export default function BabylonianScribeGame() {
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [userInputSymbols, setUserInputSymbols] = useState<('1' | '10')[]>([]);
   const [showConfetti, setShowConfetti] = useState(false);
-  const [dynamicProblem, setDynamicProblem] = useState<number | null>(null);
+  const [dynamicProblem, setDynamicProblem] = useState<number | string | null>(null);
+  const [dynamicAnswer, setDynamicAnswer] = useState<number | null>(null);
+  const [isFinalChallenge, setIsFinalChallenge] = useState(false);
+  const [showReport, setShowReport] = useState(false);
 
   const tabletBg = PlaceHolderImages.find(p => p.id === 'clay-tablet-background');
 
-  const currentLevel = useMemo(() => levels[levelIndex], [levelIndex]);
+  useEffect(() => {
+    if (isFinalChallenge) {
+      setDynamicProblem(null);
+      setDynamicAnswer(null);
+      return;
+    }
+    const currentLevel = levels[levelIndex];
+    if (typeof currentLevel.problem === 'number') {
+      const newProblem = Math.floor(Math.random() * 59) + 1;
+      setDynamicProblem(newProblem);
+      setDynamicAnswer(newProblem);
+    } else if (typeof currentLevel.problem === 'string') {
+      const num1 = Math.floor(Math.random() * 29) + 1;
+      const num2 = Math.floor(Math.random() * 29) + 1;
+      setDynamicProblem(`${num1} + ${num2}`);
+      setDynamicAnswer(num1 + num2);
+    }
+  }, [levelIndex, isFinalChallenge]);
+
+  const currentLevel = useMemo(() => {
+    if (isFinalChallenge) return finalChallengeLevel;
+    return levels[levelIndex];
+  }, [levelIndex, isFinalChallenge]);
+
   const problem = dynamicProblem ?? currentLevel.problem;
-  const answer = dynamicProblem ?? currentLevel.answer;
+  const answer = dynamicAnswer ?? currentLevel.answer;
 
   const userAnswerValue = useMemo(() => {
-    return userInputSymbols.reduce((acc, symbol) => {
-      return acc + (symbol === '1' ? 1 : 10);
-    }, 0);
+    return userInputSymbols.reduce((acc, symbol) => acc + (symbol === '1' ? 1 : 10), 0);
   }, [userInputSymbols]);
 
   const handleSymbolClick = (symbol: '1' | '10') => {
@@ -43,13 +68,8 @@ export default function BabylonianScribeGame() {
     }
   };
 
-  const handleClear = () => {
-    setUserInputSymbols([]);
-  };
-
-  const handleBackspace = () => {
-    setUserInputSymbols(userInputSymbols.slice(0, -1));
-  };
+  const handleClear = () => setUserInputSymbols([]);
+  const handleBackspace = () => setUserInputSymbols(userInputSymbols.slice(0, -1));
 
   const handleSubmit = () => {
     if (userAnswerValue === answer) {
@@ -66,7 +86,10 @@ export default function BabylonianScribeGame() {
     setFeedback(null);
     setUserInputSymbols([]);
     setDynamicProblem(null);
-    if (levelIndex < levels.length - 1) {
+    setDynamicAnswer(null);
+    if (isFinalChallenge) {
+      setShowReport(true);
+    } else if (levelIndex < levels.length - 1) {
       setLevelIndex(levelIndex + 1);
       setGameState('playing');
     } else {
@@ -78,13 +101,21 @@ export default function BabylonianScribeGame() {
     setFeedback(null);
     setGameState('playing');
     setUserInputSymbols([]);
-    const min = Math.max(1, currentLevel.problem - 5);
-    const max = currentLevel.problem + 5;
-    let newProblem;
-    do {
-      newProblem = Math.floor(Math.random() * (max - min + 1)) + min;
-    } while (newProblem === problem);
-    setDynamicProblem(newProblem);
+    if (typeof problem === 'number') {
+      const min = Math.max(1, problem - 5);
+      const max = problem + 5;
+      let newProblem;
+      do {
+        newProblem = Math.floor(Math.random() * (max - min + 1)) + min;
+      } while (newProblem === problem);
+      setDynamicProblem(newProblem);
+      setDynamicAnswer(newProblem);
+    } else if (typeof problem === 'string') {
+        const num1 = Math.floor(Math.random() * 29) + 1;
+        const num2 = Math.floor(Math.random() * 29) + 1;
+        setDynamicProblem(`${num1} + ${num2}`);
+        setDynamicAnswer(num1 + num2);
+    }
   };
 
   const handlePlayAgain = () => {
@@ -93,83 +124,64 @@ export default function BabylonianScribeGame() {
     setFeedback(null);
     setUserInputSymbols([]);
     setDynamicProblem(null);
+    setDynamicAnswer(null);
+    setIsFinalChallenge(false);
+    setShowReport(false);
   };
 
-  if (gameState === 'finished') {
-    return <CompletionScreen onPlayAgain={handlePlayAgain} />;
+  const handleStartFinalChallenge = () => {
+    setIsFinalChallenge(true);
+    setGameState('playing');
+  };
+
+  if (showReport) {
+    return <Report onPlayAgain={handlePlayAgain} />;
+  }
+
+  if (gameState === 'finished' && !isFinalChallenge) {
+    return <CompletionScreen onPlayAgain={handlePlayAgain} onStartFinalChallenge={handleStartFinalChallenge} />;
   }
 
   return (
     <Card className="w-full max-w-2xl relative overflow-hidden shadow-2xl border-4 border-yellow-900/50 bg-card">
-      {tabletBg && (
-        <Image
-          src={tabletBg.imageUrl}
-          alt={tabletBg.description}
-          data-ai-hint={tabletBg.imageHint}
-          fill
-          className="object-cover opacity-20"
-        />
-      )}
+      {tabletBg && <Image src={tabletBg.imageUrl} alt={tabletBg.description} data-ai-hint={tabletBg.imageHint} fill className="object-cover opacity-20" />}
       <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-card/50 to-card" />
-      
-      {showConfetti && (
-        <div className="absolute inset-0 pointer-events-none z-50">
-          {[...Array(20)].map((_, i) => (
-            <Star key={i} className="absolute text-yellow-400 animate-ping" style={{ top: `${Math.random() * 100}%`, left: `${Math.random() * 100}%`, animationDuration: `${Math.random() * 1 + 1}s` }} />
-          ))}
-        </div>
-      )}
-
+      {showConfetti && <div className="absolute inset-0 pointer-events-none z-50">{[...Array(20)].map((_, i) => <Star key={i} className="absolute text-yellow-400 animate-ping" style={{ top: `${Math.random() * 100}%`, left: `${Math.random() * 100}%`, animationDuration: `${Math.random() * 1 + 1}s` }} />)}</div>}
       <div className="relative z-10">
         <CardHeader className="pb-2">
           <div className="flex justify-between items-center mb-2">
             <CardTitle className="font-headline text-3xl md:text-4xl text-yellow-900/90">Babylonian Scribe</CardTitle>
-            <p className="text-sm font-bold text-muted-foreground">Level {currentLevel.level} / {levels.length}</p>
+            <p className="text-sm font-bold text-muted-foreground">{isFinalChallenge ? 'Final Challenge' : `Level ${currentLevel.level} / ${levels.length}`}</p>
           </div>
-          <Progress value={((levelIndex + 1) / levels.length) * 100} className="w-full h-2 bg-primary/20" />
+          <Progress value={isFinalChallenge ? 100 : ((levelIndex + 1) / levels.length) * 100} className="w-full h-2 bg-primary/20" />
         </CardHeader>
-
         <CardContent className="space-y-6">
           <div className="text-center p-4 rounded-lg bg-black/5">
             <div className="flex items-center justify-center gap-2 mb-2">
               <h2 className="text-xl font-bold font-headline">{currentLevel.title}</h2>
               <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full">
-                    <HelpCircle className="h-5 w-5" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80">
-                  <p className="text-sm">{currentLevel.tooltip}</p>
-                </PopoverContent>
+                <PopoverTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6 rounded-full"><HelpCircle className="h-5 w-5" /></Button></PopoverTrigger>
+                <PopoverContent className="w-80"><p className="text-sm">{currentLevel.tooltip}</p></PopoverContent>
               </Popover>
             </div>
             <p className="text-muted-foreground">{currentLevel.task}</p>
             <p className="text-5xl font-headline font-bold text-accent my-4">{problem}</p>
           </div>
-
           <div className="min-h-[120px] bg-black/10 rounded-lg p-4 flex flex-col justify-center items-center border-2 border-dashed border-yellow-900/30">
             <p className="self-start text-lg font-bold text-yellow-900/90 mb-2">Your Answer: {userAnswerValue}</p>
             <div className="flex flex-wrap items-center justify-center gap-1">
               {userInputSymbols.length === 0 && <span className="text-muted-foreground">Click symbols to write...</span>}
-              {userInputSymbols.map((symbol, i) => (
-                symbol === '1' ? <CuneiformOne key={i} className="h-8 w-8 text-accent" /> : <CuneiformTen key={i} className="h-8 w-8 text-accent" />
-              ))}
+              {userInputSymbols.map((symbol, i) => symbol === '1' ? <CuneiformOne key={i} className="h-8 w-8 text-accent" /> : <CuneiformTen key={i} className="h-8 w-8 text-accent" />)}
             </div>
           </div>
-          
           {gameState === 'feedback' && feedback && (
             <Alert variant={feedback === 'correct' ? 'default' : 'destructive'} className={`bg-opacity-80 ${feedback === 'correct' ? 'bg-green-100 border-green-500' : 'bg-red-100 border-red-500'}`}>
               {feedback === 'correct' ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
               <AlertTitle className="font-bold">{feedback === 'correct' ? 'Correct!' : 'Not Quite!'}</AlertTitle>
-              <AlertDescription>
-                {feedback === 'correct' ? 'Excellent work, scribe!' : `The correct value is ${answer}. Try to form that number.`}
-              </AlertDescription>
+              <AlertDescription>{feedback === 'correct' ? 'Excellent work, scribe!' : `The correct value is ${answer}. Try to form that number.`}</AlertDescription>
             </Alert>
           )}
-
         </CardContent>
-
         <CardFooter className="flex flex-col gap-4">
           <div className="flex justify-center gap-4 w-full">
             <Button onClick={() => handleSymbolClick('10')} size="lg" className="h-20 w-20 flex-col gap-1 bg-secondary hover:bg-secondary/80 text-secondary-foreground border-2 border-yellow-900/20 shadow-md">
@@ -185,9 +197,8 @@ export default function BabylonianScribeGame() {
              <Button onClick={handleBackspace} variant="outline" className="flex-1 bg-secondary/50">Backspace</Button>
              <Button onClick={handleClear} variant="destructive" className="flex-1 bg-red-800/80 hover:bg-red-800 text-white">Clear</Button>
           </div>
-          
           {gameState === 'playing' && <Button onClick={handleSubmit} size="lg" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-bold text-lg">Submit</Button>}
-          {gameState === 'feedback' && feedback === 'correct' && <Button onClick={handleNext} size="lg" className="w-full bg-green-600 hover:bg-green-700 text-white font-bold text-lg">Next Level</Button>}
+          {gameState === 'feedback' && feedback === 'correct' && <Button onClick={handleNext} size="lg" className="w-full bg-green-600 hover:bg-green-700 text-white font-bold text-lg">{isFinalChallenge ? 'See Report' : 'Next Level'}</Button>}
           {gameState === 'feedback' && feedback === 'incorrect' && <Button onClick={handleTryAgain} size="lg" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-bold text-lg">Try Again</Button>}
         </CardFooter>
       </div>

@@ -13,7 +13,7 @@ export const levels: Level[] = [
     title: 'Counting Goods',
     task: 'Represent the number below in Babylonian numerals.',
     tooltip: 'Babylonian numbers are base-60, written with symbols for 1 (▼) and 10 (◄).',
-    problem: 37,
+    problem: 37, // This will be randomized
     answer: 37,
   },
   {
@@ -33,3 +33,12 @@ export const levels: Level[] = [
     answer: 35,
   },
 ];
+
+export const finalChallengeLevel: Level = {
+  level: 4,
+  title: 'The King\'s Challenge',
+  task: 'The King demands a final test of your skills. Represent this complex number.',
+  tooltip: 'This is a true test of a master scribe. Remember all you have learned.',
+  problem: 59,
+  answer: 59,
+};
