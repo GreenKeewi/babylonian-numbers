@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
-import { levels, type Level, finalChallengeLevel } from '@/lib/levels';
+import { levels, finalScribeChallenges, type Level } from '@/lib/levels';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -11,11 +11,12 @@ import { HelpCircle, CheckCircle2, XCircle, Star } from 'lucide-react';
 import CuneiformOne from '@/components/icons/CuneiformOne';
 import CuneiformTen from '@/components/icons/CuneiformTen';
 import CompletionScreen from './CompletionScreen';
+import RoyalChallengeIntro from './RoyalChallengeIntro';
 import Report from './Report';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
-type GameState = 'playing' | 'feedback' | 'finished';
+type GameState = 'playing' | 'feedback' | 'finished' | 'royal_intro';
 type Feedback = 'correct' | 'incorrect' | null;
 
 export default function BabylonianScribeGame() {
@@ -26,34 +27,31 @@ export default function BabylonianScribeGame() {
   const [showConfetti, setShowConfetti] = useState(false);
   const [dynamicProblem, setDynamicProblem] = useState<number | string | null>(null);
   const [dynamicAnswer, setDynamicAnswer] = useState<number | null>(null);
-  const [isFinalChallenge, setIsFinalChallenge] = useState(false);
+  const [isRoyalChallenge, setIsRoyalChallenge] = useState(false);
+  const [royalChallengeIndex, setRoyalChallengeIndex] = useState(0);
   const [showReport, setShowReport] = useState(false);
 
   const tabletBg = PlaceHolderImages.find(p => p.id === 'clay-tablet-background');
 
   useEffect(() => {
-    if (isFinalChallenge) {
-      setDynamicProblem(null);
-      setDynamicAnswer(null);
-      return;
-    }
+    if (isRoyalChallenge) return;
     const currentLevel = levels[levelIndex];
     if (typeof currentLevel.problem === 'number') {
       const newProblem = Math.floor(Math.random() * 59) + 1;
       setDynamicProblem(newProblem);
       setDynamicAnswer(newProblem);
-    } else if (typeof currentLevel.problem === 'string') {
+    } else if (typeof currentLevel.problem === 'string' && currentLevel.problem.includes('+')) {
       const num1 = Math.floor(Math.random() * 29) + 1;
       const num2 = Math.floor(Math.random() * 29) + 1;
       setDynamicProblem(`${num1} + ${num2}`);
       setDynamicAnswer(num1 + num2);
     }
-  }, [levelIndex, isFinalChallenge]);
+  }, [levelIndex, isRoyalChallenge]);
 
   const currentLevel = useMemo(() => {
-    if (isFinalChallenge) return finalChallengeLevel;
+    if (isRoyalChallenge) return finalScribeChallenges[royalChallengeIndex];
     return levels[levelIndex];
-  }, [levelIndex, isFinalChallenge]);
+  }, [levelIndex, isRoyalChallenge, royalChallengeIndex]);
 
   const problem = dynamicProblem ?? currentLevel.problem;
   const answer = dynamicAnswer ?? currentLevel.answer;
@@ -72,7 +70,15 @@ export default function BabylonianScribeGame() {
   const handleBackspace = () => setUserInputSymbols(userInputSymbols.slice(0, -1));
 
   const handleSubmit = () => {
-    if (userAnswerValue === answer) {
+    let correctAnswer;
+    if (isRoyalChallenge) {
+        const evalAnswer = eval(currentLevel.problem as string);
+        correctAnswer = evalAnswer;
+    } else {
+        correctAnswer = answer;
+    }
+
+    if (userAnswerValue === correctAnswer) {
       setFeedback('correct');
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 2000);
@@ -87,13 +93,19 @@ export default function BabylonianScribeGame() {
     setUserInputSymbols([]);
     setDynamicProblem(null);
     setDynamicAnswer(null);
-    if (isFinalChallenge) {
-      setShowReport(true);
+
+    if (isRoyalChallenge) {
+      if (royalChallengeIndex < finalScribeChallenges.length - 1) {
+        setRoyalChallengeIndex(royalChallengeIndex + 1);
+        setGameState('playing');
+      } else {
+        setShowReport(true);
+      }
     } else if (levelIndex < levels.length - 1) {
       setLevelIndex(levelIndex + 1);
       setGameState('playing');
     } else {
-      setGameState('finished');
+      setGameState('royal_intro');
     }
   };
 
@@ -101,21 +113,6 @@ export default function BabylonianScribeGame() {
     setFeedback(null);
     setGameState('playing');
     setUserInputSymbols([]);
-    if (typeof problem === 'number') {
-      const min = Math.max(1, problem - 5);
-      const max = problem + 5;
-      let newProblem;
-      do {
-        newProblem = Math.floor(Math.random() * (max - min + 1)) + min;
-      } while (newProblem === problem);
-      setDynamicProblem(newProblem);
-      setDynamicAnswer(newProblem);
-    } else if (typeof problem === 'string') {
-        const num1 = Math.floor(Math.random() * 29) + 1;
-        const num2 = Math.floor(Math.random() * 29) + 1;
-        setDynamicProblem(`${num1} + ${num2}`);
-        setDynamicAnswer(num1 + num2);
-    }
   };
 
   const handlePlayAgain = () => {
@@ -125,12 +122,13 @@ export default function BabylonianScribeGame() {
     setUserInputSymbols([]);
     setDynamicProblem(null);
     setDynamicAnswer(null);
-    setIsFinalChallenge(false);
+    setIsRoyalChallenge(false);
+    setRoyalChallengeIndex(0);
     setShowReport(false);
   };
 
-  const handleStartFinalChallenge = () => {
-    setIsFinalChallenge(true);
+  const handleAcceptChallenge = () => {
+    setIsRoyalChallenge(true);
     setGameState('playing');
   };
 
@@ -138,8 +136,12 @@ export default function BabylonianScribeGame() {
     return <Report onPlayAgain={handlePlayAgain} />;
   }
 
-  if (gameState === 'finished' && !isFinalChallenge) {
-    return <CompletionScreen onPlayAgain={handlePlayAgain} onStartFinalChallenge={handleStartFinalChallenge} />;
+  if (gameState === 'royal_intro') {
+    return <RoyalChallengeIntro onAccept={handleAcceptChallenge} onDecline={handlePlayAgain} />;
+  }
+  
+  if (gameState === 'finished' && !isRoyalChallenge) {
+      return <CompletionScreen onPlayAgain={handlePlayAgain} />
   }
 
   return (
@@ -151,9 +153,9 @@ export default function BabylonianScribeGame() {
         <CardHeader className="pb-2">
           <div className="flex justify-between items-center mb-2">
             <CardTitle className="font-headline text-3xl md:text-4xl text-yellow-900/90">Babylonian Scribe</CardTitle>
-            <p className="text-sm font-bold text-muted-foreground">{isFinalChallenge ? 'Final Challenge' : `Level ${currentLevel.level} / ${levels.length}`}</p>
+            <p className="text-sm font-bold text-muted-foreground">{isRoyalChallenge ? `Challenge ${royalChallengeIndex + 1} / ${finalScribeChallenges.length}` : `Level ${levelIndex + 1} / ${levels.length}`}</p>
           </div>
-          <Progress value={isFinalChallenge ? 100 : ((levelIndex + 1) / levels.length) * 100} className="w-full h-2 bg-primary/20" />
+          <Progress value={isRoyalChallenge ? ((royalChallengeIndex + 1) / finalScribeChallenges.length) * 100 : ((levelIndex + 1) / levels.length) * 100} className="w-full h-2 bg-primary/20" />
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="text-center p-4 rounded-lg bg-black/5">
@@ -165,7 +167,7 @@ export default function BabylonianScribeGame() {
               </Popover>
             </div>
             <p className="text-muted-foreground">{currentLevel.task}</p>
-            <p className="text-5xl font-headline font-bold text-accent my-4">{problem}</p>
+            <p className="text-5xl font-headline font-bold text-accent my-4">{isRoyalChallenge ? currentLevel.problem : problem}</p>
           </div>
           <div className="min-h-[120px] bg-black/10 rounded-lg p-4 flex flex-col justify-center items-center border-2 border-dashed border-yellow-900/30">
             <p className="self-start text-lg font-bold text-yellow-900/90 mb-2">Your Answer: {userAnswerValue}</p>
@@ -178,7 +180,7 @@ export default function BabylonianScribeGame() {
             <Alert variant={feedback === 'correct' ? 'default' : 'destructive'} className={`bg-opacity-80 ${feedback === 'correct' ? 'bg-green-100 border-green-500' : 'bg-red-100 border-red-500'}`}>
               {feedback === 'correct' ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
               <AlertTitle className="font-bold">{feedback === 'correct' ? 'Correct!' : 'Not Quite!'}</AlertTitle>
-              <AlertDescription>{feedback === 'correct' ? 'Excellent work, scribe!' : `The correct value is ${answer}. Try to form that number.`}</AlertDescription>
+              <AlertDescription>{feedback === 'correct' ? 'Excellent work, scribe!' : `The correct value is ${isRoyalChallenge ? eval(currentLevel.problem as string) : answer}. Try to form that number.`}</AlertDescription>
             </Alert>
           )}
         </CardContent>
@@ -198,7 +200,7 @@ export default function BabylonianScribeGame() {
              <Button onClick={handleClear} variant="destructive" className="flex-1 bg-red-800/80 hover:bg-red-800 text-white">Clear</Button>
           </div>
           {gameState === 'playing' && <Button onClick={handleSubmit} size="lg" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-bold text-lg">Submit</Button>}
-          {gameState === 'feedback' && feedback === 'correct' && <Button onClick={handleNext} size="lg" className="w-full bg-green-600 hover:bg-green-700 text-white font-bold text-lg">{isFinalChallenge ? 'See Report' : 'Next Level'}</Button>}
+          {gameState === 'feedback' && feedback === 'correct' && <Button onClick={handleNext} size="lg" className="w-full bg-green-600 hover:bg-green-700 text-white font-bold text-lg">{isRoyalChallenge && royalChallengeIndex === finalScribeChallenges.length - 1 ? 'See Report' : 'Next'}</Button>}
           {gameState === 'feedback' && feedback === 'incorrect' && <Button onClick={handleTryAgain} size="lg" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-bold text-lg">Try Again</Button>}
         </CardFooter>
       </div>

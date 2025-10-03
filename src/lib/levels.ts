@@ -34,11 +34,21 @@ export const levels: Level[] = [
   },
 ];
 
-export const finalChallengeLevel: Level = {
-  level: 4,
-  title: 'The King\'s Challenge',
-  task: 'The King demands a final test of your skills. Represent this complex number.',
-  tooltip: 'This is a true test of a master scribe. Remember all you have learned.',
-  problem: 59,
-  answer: 59,
-};
+export const finalScribeChallenges: Level[] = [
+  {
+    level: 4,
+    title: 'The Royal Treasury',
+    task: 'The king has 59 gold coins and adds 37 more. How many coins are in the treasury?',
+    tooltip: 'A true scribe can handle large numbers with ease.',
+    problem: '59 + 37',
+    answer: 96,
+  },
+  {
+    level: 5,
+    title: 'The Great Ziggurat',
+    task: 'A ziggurat has 4 sides. If each side has 15 steps, how many steps are there in total?',
+    tooltip: 'Think about how to combine multiplication and your Babylonian number skills.',
+    problem: '4 * 15',
+    answer: 60,
+  },
+];
